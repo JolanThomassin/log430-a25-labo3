@@ -10,6 +10,7 @@ from orders.controllers.order_controller import create_order, remove_order, get_
 from orders.controllers.user_controller import create_user, remove_user, get_user
 from stocks.controllers.product_controller import create_product, remove_product, get_product
 from stocks.controllers.stock_controller import get_stock, set_stock, get_stock_overview
+from stocks.controllers.stock_controller import stocks_graphql_query
  
 app = Flask(__name__)
 
@@ -28,6 +29,10 @@ def post_orders():
 def delete_orders_id(order_id):
     """Delete an order with a given order_id"""
     return remove_order(order_id)
+
+@app.post("/stocks/graphql-query")
+def _stocks_graphql_query():
+    return stocks_graphql_query(request)
 
 @app.post('/products')
 def post_products():
