@@ -78,6 +78,17 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# Config VSCode / Visual Studio
+.vs/
+*.vsidx
+*.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.wsuo
+*.sqlite
+
 # IPython
 profile_default/
 ipython_config.py
