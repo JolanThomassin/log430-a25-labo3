@@ -12,3 +12,4 @@ networks:
   labo03-network:
     driver: bridge
     external: true
+    name: labo03-network
