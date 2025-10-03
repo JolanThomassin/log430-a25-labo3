@@ -18,3 +18,6 @@ DB_PASS = os.getenv("DB_PASS")
 REDIS_HOST = os.getenv("REDIS_HOST")
 REDIS_PORT = int(os.getenv("REDIS_PORT"))
 REDIS_DB = int(os.getenv("REDIS_DB"))
+
+SQLALCHEMY_DATABASE_URI = "mysql+mysqlconnector://root:root@mysql:3306/store_db"
+

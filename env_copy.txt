@@ -1,0 +1,11 @@
+MySQL
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=labo03_db
+DB_USER=labo03
+DB_PASS=labo03
+
+Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
