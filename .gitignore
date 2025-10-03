@@ -78,6 +78,22 @@ target/
 # Jupyter Notebook
 .ipynb_checkpoints
 
+# Environnements virtuels
+.venv/
+env/
+venv/
+
+# Fichiers Python compilés
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Cache Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
 # Config VSCode / Visual Studio
 .vs/
 *.vsidx
@@ -88,6 +104,21 @@ target/
 *.sln.docstates
 *.wsuo
 *.sqlite
+
+# Logs
+*.log
+
+# Environnements / secrets
+.env
+.env.*
+
+# Docker
+*.pid
+*.pid.lock
+
+# Autres fichiers temporaires
+*.DS_Store
+Thumbs.db
 
 # IPython
 profile_default/
