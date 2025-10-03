@@ -28,7 +28,16 @@ def set_stock_for_product(product_id, quantity):
             response_message = f"rows added: {new_stock.product_id}"
   
         r = get_redis_conn()
-        r.hset(f"stock:{product_id}", "quantity", quantity)
+        fields = _get_product_fields(session, product_id)
+        r.hset(
+            f"stock:{product_id}",
+            mapping={
+                "quantity": int(quantity),
+                "name": fields["name"] or "",
+                "sku": fields["sku"] or "",
+                "price": fields["price"] if fields["price"] is not None else "",
+            },
+        )
         return response_message
     except Exception as e:
         session.rollback()
@@ -64,6 +73,16 @@ def check_out_items_from_stock(session, order_items):
 def check_in_items_to_stock(session, order_items):
     """ Increase stock quantities in Redis """
     update_stock_mysql(session, order_items, "+")
+    
+def _get_product_fields(session, product_id):
+    row = session.execute(
+        text("SELECT name, sku, price FROM products WHERE id = :pid"),
+        {"pid": product_id}
+    ).fetchone()
+    if not row:
+        return {"name": None, "sku": None, "price": None}
+    name, sku, price = row
+    return {"name": name, "sku": sku, "price": float(price) if price is not None else None}
 
 def update_stock_redis(order_items, operation):
     """ Update stock quantities in Redis """
@@ -73,26 +92,34 @@ def update_stock_redis(order_items, operation):
     stock_keys = list(r.scan_iter("stock:*"))
     if stock_keys:
         pipeline = r.pipeline()
-        for item in order_items:
-            if hasattr(item, 'product_id'):
-                product_id = item.product_id
-                quantity = item.quantity
-            else:
-                product_id = item['product_id']
-                quantity = item['quantity']
-            # TODO: ajoutez plus d'information sur l'article
-            current_stock = r.hget(f"stock:{product_id}", "quantity")
-            current_stock = int(current_stock) if current_stock else 0
-            
-            if operation == '+':
-                new_quantity = current_stock + quantity
-            else:  
-                new_quantity = current_stock - quantity
-            
-            pipeline.hset(f"stock:{product_id}", "quantity", new_quantity)
-        
-        pipeline.execute()
-    
+        session = get_sqlalchemy_session()
+        try:
+            for item in order_items:
+                if hasattr(item, 'product_id'):
+                    product_id = item.product_id
+                    quantity = item.quantity
+                else:
+                    product_id = item['product_id']
+                    quantity = item['quantity']
+                current_stock = r.hget(f"stock:{product_id}", "quantity")
+                current_stock = int(current_stock) if current_stock else 0
+                if operation == '+':
+                    new_quantity = current_stock + quantity
+                else:  
+                    new_quantity = current_stock - quantity
+                fields = _get_product_fields(session, product_id)
+                pipeline.hset(
+                    f"stock:{product_id}",
+                    mapping={
+                        "quantity": int(new_quantity),
+                        "name": fields["name"] or "",
+                        "sku": fields["sku"] or "",
+                        "price": fields["price"] if fields["price"] is not None else "",
+                    },
+                )
+            pipeline.execute()
+        finally:
+            session.close()
     else:
         _populate_redis_from_mysql(r)
 
@@ -100,24 +127,33 @@ def _populate_redis_from_mysql(redis_conn):
     """ Helper function to populate Redis from MySQL stocks table """
     session = get_sqlalchemy_session()
     try:
-        stocks = session.execute(
-            text("SELECT product_id, quantity FROM stocks")
+        rows = session.execute(
+            text("""
+                SELECT s.product_id, s.quantity, p.name, p.sku, p.price
+                FROM stocks s
+                JOIN products p ON p.id = s.product_id
+            """)
         ).fetchall()
 
-        if not len(stocks):
+        if not len(rows):
             print("Il n'est pas nécessaire de synchronisér le stock MySQL avec Redis")
             return
         
         pipeline = redis_conn.pipeline()
         
-        for product_id, quantity in stocks:
+        for product_id, quantity, name, sku, price in rows:
             pipeline.hset(
                 f"stock:{product_id}", 
-                mapping={ "quantity": quantity }
+                mapping={
+                    "quantity": int(quantity),
+                    "name": name or "",
+                    "sku": sku or "",
+                    "price": float(price) if price is not None else "",
+                }
             )
         
         pipeline.execute()
-        print(f"{len(stocks)} enregistrements de stock ont été synchronisés avec Redis")
+        print(f"{len(rows)} enregistrements de stock ont été synchronisés avec Redis")
         
     except Exception as e:
         print(f"Erreur de synchronisation: {e}")
